@@ -39,7 +39,7 @@ The system enforces following invariants:
 
 For European options:
 
-$$ C - P = S\exp(-qT) - K\exp(-rT)v$$
+$$ C - P = Se^{-qT} - Ke^{-rT} $$
 
 Used to:
 - Reconstruct put prices from liquid calls (or vice versa)
