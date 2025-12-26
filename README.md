@@ -38,6 +38,19 @@ The pipeline consists of three layers:
 
 All models operate on arbitrage-free inputs.
 
+### Arbitrage Enforcement
+
+The system enforces vertical, butterfly, and calendar arbitrage constraints explicitly.
+The mathematical formulation and enforcement order are detailed in §3–§6 of [`DESIGN.md`](DESIGN.md).
+
+## Design & Invariants
+
+This project is intentionally organized around explicit invariants rather than around any single volatility model.
+
+The full design rationale — including the choice of representations, the ordering of arbitrage repairs, and the separation between inference, constraints, and modeling — is documented in [`DESIGN.md`](DESIGN.md).
+
+Readers interested in *why* particular constraints are enforced, *where* they are applied in the pipeline, and *how* edge cases are handled should start there.
+
 ## Key Features
 - Hybrid implied volatility inference with provenance tracking
 - Explicitly enforcement of static arbitrage constraints
@@ -60,3 +73,5 @@ This project is designed for:
 - risk and surface consistency analysis
 
 It is not a trading strategy.
+
+For detailed overview of the design please refer - [Design](DESIGN.md)

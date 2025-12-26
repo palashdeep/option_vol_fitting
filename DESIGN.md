@@ -1,5 +1,14 @@
 # Arbitrage Free Volatility Surface Construction from Noisy Option Quotes
 
+### Relationship to README
+
+This document complements [`README.md`](README.md).
+
+- `README.md` describes *what* the system does and *how* to use it at a high level.
+- `DESIGN.md` explains *why* the system is structured the way it is, with emphasis on invariants, correctness, and failure modes.
+
+Readers evaluating architectural decisions or correctness guarantees should start here before reading the implementation.
+
 ## Problem Statement
 
 Market option quotes are noisy, incomplete and frequently violate known no-arbitrage constraints. In particular:
@@ -94,6 +103,8 @@ Each IV is tagged with:
 - `dataset_fallback`
 
 ## Arbitrage Enforcement Layer
+
+See “Arbitrage Enforcement” in [`README.md`](README.md) for a high-level overview of how these constraints are applied in practice.
 
 ### Representation Choice
 
