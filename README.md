@@ -1,8 +1,8 @@
 # Project: Arbitrage-Free Volatility Surface Construciton
 
-This project builds a consistent implied volatility surface from noisy option quotes while enforcing known no-arbitrage constraints.
+This project builds a consistent implied volatility surface from noisy option quotes while enforcing known no-arbitrage constraints. The emphasis is on correctness, invairants, and auditability, rather than any single volatility model.
 
-The emphasis is on correctness, invairants, and auditability, rather than any single volatility model.
+Design rationale and invariants are documented in [`DESIGN.md`](DESIGN.md)
 
 ## Motivation
 
@@ -47,7 +47,7 @@ The mathematical formulation and enforcement order are detailed in §3–§6 of 
 
 This project is intentionally organized around explicit invariants rather than around any single volatility model.
 
-The full design rationale — including the choice of representations, the ordering of arbitrage repairs, and the separation between inference, constraints, and modeling — is documented in [`DESIGN.md`](DESIGN.md).
+The full design rationale including the choice of representations, the ordering of arbitrage repairs, and the separation between inference, constraints, and modeling is documented in [`DESIGN.md`](DESIGN.md).
 
 Readers interested in *why* particular constraints are enforced, *where* they are applied in the pipeline, and *how* edge cases are handled should start there.
 
@@ -75,5 +75,3 @@ This project is designed for:
 - risk and surface consistency analysis
 
 It is not a trading strategy.
-
-For detailed overview of the design please refer - [Design](DESIGN.md)
