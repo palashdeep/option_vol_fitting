@@ -75,3 +75,5 @@ This project is designed for:
 - risk and surface consistency analysis
 
 It is not a trading strategy.
+
+A short demonstration notebook is available in `research/`.
