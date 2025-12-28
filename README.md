@@ -62,7 +62,7 @@ Readers interested in *why* particular constraints are enforced, *where* they ar
 ```graphql
 core/        # invariant-driven logic
 models/      # surface parametrizations
-research/    # analysis and comparison
+research/    # exploratory analysis; not part of invariant core
 tests/       # invariant tests
 scripts/     # orchestration
 ```
