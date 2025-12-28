@@ -2,119 +2,31 @@ import math
 import numpy as np
 import pandas as pd
 from scipy.interpolate import UnivariateSpline
-from fit.svi import svi_total_variance, fit_svi
-from fit.sabr import sabr_hagan_iv, calibrate_sabr
-from fit.spline import fit_spline_total_variance, iv_from_spline
-from fit.heston import calibrate_heston, heston_iv_surface_from_params
-from arb.butterfly import check_butterfly_arbitrage, repair_convexity_local
-from arb.calendar import enforce_calendar_arbitrage
-from arb.vertical import enforce_vertical_arbitrage_on_iv_grid
-from viz.utils import implied_vol_from_price, year_frac_days, forward_price_from_spot, bs_vega, rmse, rmse_vega, is_quote_liquid, intrinsic_price
 
-def choose_iv_for_row(row, df_snapshot,
-                      r=0.01, q=0.016,
-                      max_spread_pct=0.20, min_extrinsic_frac=0.001):
-    """
-    row: Series with fields: date, act_symbol, strike, call_put, bid, ask, mid, impliedVol (dataset)
-    df_snapshot: DataFrame for same snapshot (same date & act_symbol) so we can find the matching call/put sibling row
-    Returns: (iv_used, iv_source, iv_flag)
-      iv_source in {"market_mid", "parity_from_call_market", "dataset"}
-      iv_flag: explanation or reason
-    """
-    S = float(row.get('Spot', np.nan))
-    if np.isnan(S):
-        # caller should provide S; fallback to strike median if missing
-        S = float(df_snapshot['strike'].median())
-    K = float(row['strike'])
-    T = float(row.get('T', 30.0/365.0))  # ensure T is provided in your data; otherwise compute from dates
-    opt_type = 'C' if str(row['call_put']).lower().startswith('c') else 'P'
-    bid = row.get('bid', np.nan)
-    ask = row.get('ask', np.nan)
-    mid = row.get('mid', np.nan)
-    ds_iv = row.get('impliedVol', np.nan)
+from scripts.bootstrap import *
+from models.svi import svi_total_variance, fit_svi
+from models.sabr import sabr_hagan_iv, calibrate_sabr
+from models.spline import fit_spline_total_variance, iv_from_spline
+from models.heston import calibrate_heston, heston_iv_surface_from_params
+from core.arbitrage.butterfly import check_butterfly_arbitrage, repair_convexity_local
+from core.arbitrage.calendar import enforce_calendar_arbitrage
+from core.arbitrage.vertical import enforce_vertical_arbitrage_on_iv_grid
+from core.viz.utils import year_frac_days, forward_price_from_spot, rmse, rmse_vega, is_quote_liquid, intrinsic_price
+from core.arbitrage.black_scholes import implied_vol_from_price, bs_vega
 
-    # 1) try market mid directly if liquid
-    liquid, reason = is_quote_liquid(bid, ask, mid, S, K, T, r, q,
-                                     max_spread_pct=max_spread_pct, min_extrinsic_frac=min_extrinsic_frac)
-    if liquid:
-        iv_market = implied_vol_from_price(mid, S, K, T, r, option_type=opt_type, q=q)
-        if not np.isnan(iv_market):
-            return iv_market, "market_mid", "ok"
-        # inversion failed (e.g., price out of BS bounds) -> mark and continue
-        # continue to parity fallback for puts
-        parity_reason = "inv_failed_market"
-    else:
-        parity_reason = reason
-
-    # 2) parity fallback if this is a put and call market looks liquid:
-    if opt_type == 'P':
-        # find call row same strike
-        call_row = df_snapshot[(df_snapshot['strike'] == K) & (df_snapshot['call_put'].str.lower().str.startswith('c'))]
-        if not call_row.empty:
-            call_row = call_row.iloc[0]
-            call_bid = call_row.get('bid', np.nan); call_ask = call_row.get('ask', np.nan)
-            # compute call mid if present
-            call_mid = call_row.get('mid', np.nan)
-            call_liquid, call_reason = is_quote_liquid(call_bid, call_ask, call_mid, S, K, T, r, q,
-                                                      max_spread_pct=max_spread_pct, min_extrinsic_frac=min_extrinsic_frac)
-            if call_liquid and not np.isnan(call_mid):
-                # get PUT price via parity using market call-mid
-                c_price = float(call_mid)
-                p_via_call = c_price - S * math.exp(-q * T) + K * math.exp(-r * T)
-                # sanity: p_via_call must be >= intrinsic_put (or tiny numerical)
-                intrinsic_put = intrinsic_price(S, K, T, r, q, 'P')
-                if p_via_call + 1e-12 >= 0:
-                    iv_put_via_call = implied_vol_from_price(p_via_call, S, K, T, r, option_type='P', q=q)
-                    if not np.isnan(iv_put_via_call):
-                        return iv_put_via_call, "parity_from_call_market", f"parity_ok_call_liquid:{call_reason}"
-                    else:
-                        # parity inversion failed
-                        parity_reason = "parity_inv_failed"
-                else:
-                    parity_reason = "parity_negative_price"
-            else:
-                parity_reason = f"call_not_liquid:{call_reason}"
-        else:
-            parity_reason = "no_call_row"
-
-    # 3) fallback to dataset impliedVol
-    if not pd.isnull(ds_iv):
-        return float(ds_iv), "dataset", f"fallback_due_to:{parity_reason}"
-    # 4) last resort: return the inverted mid even if not liquid (but mark it)
-    iv_try = implied_vol_from_price(mid, S, K, T, r, option_type=opt_type, q=q) if not np.isnan(mid) else np.nan
-    if not np.isnan(iv_try):
-        return iv_try, "market_mid_unreliable", f"used_unreliable_quote:{parity_reason}"
-    return np.nan, "none", f"no_iv_found:{parity_reason}"
-# ---------------------------
-# Realized vol (forward if available, else backward)
-#    using daily close series. Annualized using 252 trading days.
-# ---------------------------
-def realized_vol_forward(close_series, start_date, days):
-    # close_series: pandas Series indexed by date
-    # we want returns from start_date+1 to start_date+days (forward realized)
-    start_idx = close_series.index.get_loc(start_date, method='nearest')
-    end_idx = start_idx + days
-    if end_idx >= len(close_series):
-        return np.nan  # not enough forward data
-    prices = close_series.iloc[start_idx: end_idx + 1].values
-    rets = np.diff(np.log(prices))
-    if len(rets) <= 1:
+def rmse(a, b):
+    ok = (~np.isnan(a)) & (~np.isnan(b))
+    if ok.sum() == 0:
         return np.nan
-    rv = np.sqrt(np.sum(rets**2) * (252.0 / len(rets)))
-    return rv
+    return math.sqrt(np.mean((a[ok] - b[ok])**2))
 
-def realized_vol_backward(close_series, end_date, days):
-    # compute realized vol using previous 'days' prior to end_date (exclusive)
-    end_idx = close_series.index.get_loc(end_date, method='nearest')
-    start_idx = end_idx - days
-    if start_idx < 0:
+def rmse_vega(a, b, vega):
+    ok = (~np.isnan(a)) & (~np.isnan(b)) & (vega > 0)
+    if ok.sum() == 0:
         return np.nan
-    prices = close_series.iloc[start_idx: end_idx + 1].values
-    rets = np.diff(np.log(prices))
-    if len(rets) <= 1:
-        return np.nan
-    rv = np.sqrt(np.sum(rets**2) * (252.0 / len(rets)))
-    return rv
+    w = vega[ok] / np.sum(vega[ok])
+    return math.sqrt(np.sum(((a[ok] - b[ok])**2) * w))
+
 # ---------------------------
 # End-to-end per-snapshot pipeline
 # ---------------------------

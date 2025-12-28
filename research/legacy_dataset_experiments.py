@@ -3,7 +3,7 @@ data_acquisition.py
 
 Purpose:
 - Pull underlying daily history for tickers (via yfinance)
-- Pull current option chains (via yfinance) for each expiry
+- Pull current option chains for each expiry
 - Compute mid prices, time-to-expiry, forward estimate, log-moneyness
 - Compute implied vols via Black-Scholes inversion
 - Compute realized vol (21d rolling) from historical closes
@@ -12,8 +12,8 @@ Purpose:
 
 import os
 import math
-from arb.black_scholes import implied_vol_from_price
-from viz.utils import assign_tenor_series
+from core.arbitrage.black_scholes import implied_vol_from_price
+from core.viz.utils import assign_tenor_series
 from functools import reduce
 from datetime import datetime, timedelta
 import numpy as np

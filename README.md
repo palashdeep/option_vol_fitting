@@ -61,8 +61,10 @@ Readers interested in *why* particular constraints are enforced, *where* they ar
 ## Repository Structure
 ```graphql
 core/        # invariant-driven logic
-research/    # model calibration and analysis
+models/      # surface parametrizations
+research/    # analysis and comparison
 tests/       # invariant tests
+scripts/     # orchestration
 ```
 
 ## Intended Use
