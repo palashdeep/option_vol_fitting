@@ -1,8 +1,8 @@
 import math
 import numpy as np
 import pandas as pd
-from viz.utils import is_quote_liquid, intrinsic_price
-from arbitrage.black_scholes import implied_vol_from_price, put_from_call
+from core.viz.utils import is_quote_liquid, intrinsic_price
+from core.arbitrage.black_scholes import implied_vol_from_price, put_from_call
 
 def choose_iv_for_row(row, df_snapshot, r=0.01, q=0.0, max_spread_pct=0.20, min_extrinsic_frac=0.001):
     """Decide which iv to use for each row"""

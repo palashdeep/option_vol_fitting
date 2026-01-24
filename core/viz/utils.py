@@ -4,7 +4,7 @@ import pandas as pd
 
 def get_spot(close_series, snap_date):
     """Return sopt price aligned to snapshot date"""
-    ts = close_series.index.get_loc(snap_date, method="nearest")
+    ts = close_series.index.get_indexer([snap_date], method='nearest')
     return float(close_series.iloc[ts])
 
 def intrinsic_price(S, K, T, r, q, option_type):

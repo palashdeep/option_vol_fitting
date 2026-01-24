@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from black_scholes import bs_price, implied_vol_from_price
+from core.arbitrage.black_scholes import bs_price, implied_vol_from_price
 
 def _pava_nonincreasing(y):
     """Pool Adjacent Violators Algorithm (PAVA) for monotone non-increasing sequences"""   

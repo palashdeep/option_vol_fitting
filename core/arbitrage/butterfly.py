@@ -43,13 +43,13 @@ def repair_convexity_local(k, w, max_iter=50, tol=1e-12):
     bad_idx_final, _ = check_butterfly_arbitrage(k, w, tol=tol)
     
     if len(bad_idx_final) > 0:
-        try:
-            from scipy.interpolate import UnivariateSpline
-            spl = UnivariateSpline(k, w, k=3, s=1e-6 * n)
-            w_smooth = spl(k)
-            w = np.maximum(w_smooth, 1e-12)
-            changed = True        
-        except Exception:
-            pass
-    
+        w = w.copy()
+        for i in range(1, n-1):
+            w[i] = max(
+                w[i],
+                0.5 * (w[i-1] + w[i+1])
+            )
+        w = np.maximum(w, 1e-12)
+        changed = True
+
     return w, changed

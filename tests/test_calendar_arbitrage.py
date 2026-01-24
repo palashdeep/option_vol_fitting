@@ -14,4 +14,4 @@ def test_calendar_monotonic_totoal_varaince():
     W_fixed, changed = enforce_calendar_arbitrage(k_grid, W)
 
     assert np.all(np.diff(W_fixed) >= -1e-12)
-    assert changed is True
+    assert changed == True
